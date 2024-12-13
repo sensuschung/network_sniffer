@@ -9,6 +9,7 @@ import time
 from PIL import Image, ImageTk
 from storage import Packet,save_binary_file, package_list_to_json, save_csv
 import queue
+from filter import filter
 
 def get_network_interfaces():
     c = wmi.WMI()
@@ -27,6 +28,7 @@ def get_network_interfaces():
 
 class SnifferApp:
     def __init__(self, root):
+        self.bpf = ""
         root.geometry("800x600")
         self.root = root
         self.root.title("Network Sniffer")
@@ -161,7 +163,7 @@ class SnifferApp:
         menubar.add_command(label= "Stop", command=self.stop_sniffing)
 
         function_menu.add_command(label="Track Stream", command=self.track_stream)
-        function_menu.add_command(label="Set Filter", command=lambda: print("Test Filter"))
+        function_menu.add_command(label="Set Filter", command=lambda: self.filter_menu())
 
         # 显示菜单
         self.root.config(menu=menubar)
@@ -260,7 +262,7 @@ class SnifferApp:
         try:
             # 配置scapy以避免标志值解释错误
             conf.use_pcap = True
-            sniff(iface=interface, prn=self.enqueue_packet, stop_filter=lambda x: not self.sniffing or self.packet_count >= 1000)
+            sniff(iface=interface, prn=self.enqueue_packet, stop_filter=lambda x: not self.sniffing or self.packet_count >= 1000,filter=self.bpf)
         except Exception as e:
             print(f"Error: {str(e)}")
 
@@ -354,6 +356,9 @@ class SnifferApp:
         filenames = ["id", "timestamp", "src", "dst", "proto", "length", "info", "is_fragmented", "fragment_id","raw"]
         json = package_list_to_json(self.packet_list)
         save_csv(json,filenames)
+
+    def filter_menu(self):
+        filter(self)
 
 if __name__ == "__main__":
     root = tk.Tk()
