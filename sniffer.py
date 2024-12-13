@@ -7,7 +7,7 @@ from packet_processor import extract_packet_info,process_packet,get_ip_frag,reas
 import threading
 import time
 from PIL import Image, ImageTk
-from storage import Packet
+from storage import Packet,save_binary_file, package_list_to_json, save_csv
 import queue
 
 def get_network_interfaces():
@@ -150,7 +150,7 @@ class SnifferApp:
         # 创建 "File" 菜单
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Save", command=lambda: print("Save"))
+        file_menu.add_command(label="Save", command=lambda: self.save_record())
 
         function_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Functions", menu=function_menu)
@@ -182,18 +182,23 @@ class SnifferApp:
                 self.track_stream_window.geometry("600x400")
                 self.track_frame = tk.Frame(self.track_stream_window)
                 self.track_frame.grid(row=0, column=0, sticky="nsew")
-                self.track_frame.grid_rowconfigure(0, weight=1)
+                self.track_stream_window.grid_rowconfigure(0, weight=1)
+                self.track_stream_window.grid_columnconfigure(0, weight=1)
+                self.track_frame.grid_rowconfigure(0, weight=0)
                 self.track_frame.grid_rowconfigure(1, weight=1)
+                self.track_frame.grid_rowconfigure(2, weight=0)
                 self.track_frame.grid_columnconfigure(0, weight=1)
                 self.track_frame.grid_columnconfigure(1, weight=1)
                 self.track_frame.grid_columnconfigure(2, weight=1)
                 self.track_frame.grid_columnconfigure(3, weight=1)
 
+                self.info_window_label = tk.Label(self.track_frame, text="Packet Info")
+                self.info_window_label.grid(row=0, column=0, padx=(10,5), pady=0, sticky="w")
                 self.info_window = scrolledtext.ScrolledText(self.track_frame, wrap=tk.WORD)
-                self.info_window.grid(row=1, column=0, columnspan=4, padx=(10,10), pady=(5,20), sticky="nsew")
+                self.info_window.grid(row=1, column=0, columnspan=4, padx=(10,10), pady=(5,5), sticky="nsew")
 
                 self.decode_select = ttk.Combobox(self.track_frame, values=["Raw", "UTF-8", "ASCII", "Latin-1"])
-                self.decode_select.grid(row=0, column=0)
+                self.decode_select.grid(row=0, column=0,columnspan=4, padx=(100,25), sticky="ew")
                 self.decode_select.set("Raw")
 
                 track_id = packet.fragment_id
@@ -203,9 +208,13 @@ class SnifferApp:
                         track_list.append(packet.packet)
                 track_list.sort(key=get_ip_frag)
                 new_packet = reassemble_fragments(track_list)
+                self.update_info_text(new_packet)
                 self.decode_select.bind("<<ComboboxSelected>>", lambda event:self.update_info_text(new_packet))
                 # print(full_packet)
                 # print(track_list)   
+
+                self.save_info_button = tk.Button(self.track_frame, text="Save", command=lambda: save_binary_file(new_packet))
+                self.save_info_button.grid(row=2, column=3, padx=(10,25), pady=(5,5), sticky="ew")
             else:
                 messagebox.showwarning("Warning", "Selected packet is not a fragmented packet.")
         else:
@@ -340,6 +349,11 @@ class SnifferApp:
     def to_hex(self, data):
         """将数据转换为十六进制格式"""
         return ' '.join(f'{byte:02x}' for byte in data)
+
+    def save_record(self):
+        filenames = ["id", "timestamp", "src", "dst", "proto", "length", "info", "is_fragmented", "fragment_id","raw"]
+        json = package_list_to_json(self.packet_list)
+        save_csv(json,filenames)
 
 if __name__ == "__main__":
     root = tk.Tk()
