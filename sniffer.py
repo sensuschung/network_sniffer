@@ -324,7 +324,9 @@ class SnifferApp:
     def update_hex_text(self, event=None):
         """根据选择的编码方式更新hex_text内容"""
         selected_encoding = self.encode_menu.get()
-        raw_data = self.chosen_packet.raw
+        raw_data = None
+        if self.chosen_packet:
+            raw_data = self.chosen_packet.raw
         if raw_data:
             # print(type(raw_data))
             byte_data = raw_data.load
