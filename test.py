@@ -108,20 +108,14 @@ image_path = "./test/src_file/start.png"
 with open(image_path, "rb") as img_file:
     image_data = img_file.read()
 
-# 创建一个大的ICMP包
-pkt_tcp = IP(dst="192.168.1.1") / TCP(dport=12345, sport=54321, flags="S")  / Raw(load=image_data)  # 超过MTU，会自动进行分片
-pkt_udp = IP(dst="192.168.1.1") / UDP(dport=12345)  / Raw(load=image_data)
+pkt_tcp = IP(dst="192.168.1.1") / TCP(dport=12345, sport=54321, flags="S")  / html_payload  # 超过MTU，会自动进行分片
+pkt_udp = IP(dst="192.168.1.1") / UDP(dport=12345)  / html_payload
 # print(pkt)
 
 print(len(Raw(load=image_data)))
 
-# 使用Scapy的 fragment() 函数将包分片
 fragments = fragment(pkt_tcp,fragsize=1000)
 
-# for fragment in fragments:
-#     print(fragment.show())
-
-# # 发送分片包
 send(fragments)
 
 fragments_udp = fragment(pkt_udp,fragsize=1000)

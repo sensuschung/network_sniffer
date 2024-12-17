@@ -42,6 +42,19 @@ def is_fragmented(packet):
     return IP in packet and (packet[IP].flags & 1 != 0 or packet[IP].frag > 0)
 
 def reassemble_fragments(fragments):
+    """
+    Reassembles fragmented IP packets into a single data payload.
+    Args:
+        fragments (list): A list of fragmented packets. Each fragment is expected to be a Scapy packet object containing an IP layer.
+    Returns:
+        bytes: The reassembled data payload from the fragmented packets, excluding the transport layer header (TCP/UDP).
+    Notes:
+        - The function assumes that all fragments belong to the same original packet.
+        - The function handles both TCP and UDP transport layers.
+        - The function calculates the total length of the reassembled data by considering the fragment offsets and payload lengths.
+        - The function creates a bytearray to store the complete data and then fills it with the payloads from each fragment.
+        - The function removes the transport layer header from the reassembled data before returning it.
+    """
     # 计算总数据长度
     total_length = max((frag[IP].frag * 8) + len(frag[IP].payload) for frag in fragments if IP in frag)
 
@@ -64,6 +77,31 @@ def reassemble_fragments(fragments):
     return full_data[header_length:]
 
 def process_packet(packet):
+    """
+    Processes a network packet and returns a summary string based on the packet type.
+
+    Args:
+        packet: The network packet to be processed.
+
+    Returns:
+        A string summarizing the type of the packet and its details.
+
+    Packet Types:
+        - ARP: Address Resolution Protocol packets.
+        - IP: Internet Protocol packets (IPv4 and IPv6).
+        - IGMP: Internet Group Management Protocol packets.
+        - TCP: Transmission Control Protocol packets, including:
+            - Telnet: Port 23.
+            - HTTP: Port 80.
+            - HTTPS: Port 443.
+        - UDP: User Datagram Protocol packets, including:
+            - DNS: Port 53.
+            - SNMP: Port 161.
+            - NTP: Port 123.
+            - DHCP: Ports 67 and 68.
+        - ICMP: Internet Control Message Protocol packets.
+        - Other: Any other packet types not specifically handled.
+    """
     if ARP in packet:
         return f"ARP Packet: {packet.summary()}"
     elif IP in packet or IPv6 in packet:
@@ -97,6 +135,16 @@ def process_packet(packet):
         return f"Other Packet: {packet.summary()}"
 
 def parse_raw(packet,details):
+    """
+    Parses the raw payload from a network packet and appends it to the details list.
+
+    Args:
+        packet (scapy.packet.Packet): The network packet to parse.
+        details (list): A list to append the decoded raw payload or error message.
+
+    Returns:
+        scapy.packet.Raw or None: The raw payload if present, otherwise None.
+    """
     raw = None
     if Raw in packet:
         raw = packet[Raw]
@@ -108,7 +156,13 @@ def parse_raw(packet,details):
 
 def format_packet(packet):
     """
-    处理报文，根据不同协议提供详细的ASCII表示
+    Formats the details of a given network packet into a human-readable string.
+    Args:
+        packet: The network packet to be formatted. This packet can contain various protocol headers such as Ethernet, ARP, IP, IPv6, IGMP, TCP, UDP, ICMP, ICMPv6 Echo Request, and ICMPv6 Echo Reply.
+    Returns:
+        tuple: A tuple containing:
+            - formatted_details (str): A string with the formatted details of the packet.
+            - raw (str or None): The raw payload data if available, otherwise None.
     """
     details = []
 
@@ -237,29 +291,6 @@ def format_packet(packet):
         details.append(f"    Identifier: {icmpv6_echo_reply.id}")
         details.append(f"    Sequence: {icmpv6_echo_reply.seq}")
     
-    # # 处理 ICMPv6 Neighbor Discovery Router Advertisement (RA)
-    # if ICMPv6ND_RA in packet:
-    #     icmpv6_ra = packet[ICMPv6ND_RA]
-    #     details.append("\nICMPv6 Neighbor Discovery Router Advertisement:")
-    #     details.append(f"    Type: {icmpv6_ra.type}")
-    #     details.append(f"    Code: {icmpv6_ra.code}")
-    #     # details.append(f"    Checksum: {(icmpv6_ra.chksum)}")
-    #     print(icmpv6_ra)
-        
-    #     # 处理邻居发现选项
-    #     options = getattr(icmpv6_ra, 'options', None)
-    #     # print(options)
-    #     # if ICMPv6NDOptSrcLLAddr in packet:
-    #     #     icmpv6_src_lladdr = packet[ICMPv6NDOptSrcLLAddr]
-    #     #     details.append(f"    Source Link-Layer Address: {icmpv6_src_lladdr.src_LLaddr}")
-    #     # if ICMPv6NDOptMTU in packet:
-    #     #     icmpv6_mtu = packet[ICMPv6NDOptMTU]
-    #     #     details.append(f"    MTU: {icmpv6_mtu.mtu}")
-    #     # if ICMPv6NDOptPrefixInfo in packet:
-    #     #     icmpv6_ra = packet[ICMPv6NDOptPrefixInfo]
-    #     #     details.append(f"    Prefix Length: {icmpv6_ra.prefixlen}")
-    #     #     details.append(f"    Prefix: {icmpv6_ra.prefix}")
-
     # 处理 Raw 数据
     if not raw_parse:
         details.append("\nUnkown Payload:")
@@ -273,7 +304,25 @@ def format_packet(packet):
 
 def extract_packet_info(packet, packet_count):
     """
-    提取报文信息
+    Extracts and returns detailed information from a network packet.
+    Args:
+        packet: The network packet to be processed.
+        packet_count: The count of the packet being processed.
+    Returns:
+        tuple: A tuple containing the following elements:
+            - packet: The original packet.
+            - packet_count: The count of the packet being processed.
+            - timestamp: The timestamp when the packet was captured.
+            - src: The source IP address.
+            - dst: The destination IP address.
+            - proto: The protocol used by the packet.
+            - length: The length of the packet.
+            - summary: A summary of the packet.
+            - details: Detailed information about the packet (currently None).
+            - hex_data: The hexadecimal representation of the packet data (currently None).
+            - raw: The raw packet data (currently None).
+            - is_fragment: A boolean indicating if the packet is a fragment.
+            - fragment_id: The fragment identifier if the packet is a fragment.
     """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(packet.time))
     fragment_id = None
@@ -319,6 +368,15 @@ def extract_packet_info(packet, packet_count):
     return (packet,packet_count, timestamp, src, dst, proto, length, summary, details,hex_data,raw,is_fragment,fragment_id)
 
 def process_packet(packet:Packet):
+    """
+    Processes a network packet and updates its details, raw information, and formatted hexadecimal representation.
+
+    Args:
+        packet (Packet): The network packet to be processed. It is expected to have attributes `packet`, `update_details`, `update_raw`, and `update_hex`.
+
+    Returns:
+        None
+    """
     details,raw_info = format_packet(packet.packet)
     hex_data = None
     formatted_hex = ""

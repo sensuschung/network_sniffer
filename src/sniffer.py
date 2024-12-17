@@ -12,6 +12,18 @@ import queue
 from filter import filter
 
 def get_network_interfaces():
+    """
+    Retrieves a dictionary of network interfaces with their descriptions.
+
+    This function uses the WMI (Windows Management Instrumentation) to get the
+    network adapter configurations that are IP enabled. It then matches these
+    configurations with the network interfaces obtained from the netifaces
+    library based on their MAC addresses.
+
+    Returns:
+        dict: A dictionary where the keys are the descriptions of the network
+              interfaces and the values are the corresponding interface names.
+    """
     c = wmi.WMI()
     interfaces = {}
     for nic in c.Win32_NetworkAdapterConfiguration(IPEnabled=True):

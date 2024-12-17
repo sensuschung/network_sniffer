@@ -2,6 +2,15 @@ import tkinter as tk
 from tkinter import messagebox
 
 def filter(app):
+    """
+    Opens a new window to set packet filtering options and generates a BPF (Berkeley Packet Filter) string based on user input.
+    Args:
+        app: The main application instance which should have a `root` attribute for the main window and a `bpf` attribute to store the generated BPF string.
+    The function creates a new window with various input fields for setting filter criteria such as protocol, source IP, destination IP, source port, destination port, source MAC, destination MAC, and network mask. It provides two main functionalities:
+    1. `generate_bpf`: Generates a BPF string based on the user input and displays it in a message box. If no filters are set, it defaults to capturing all packets.
+    2. `reset_fields`: Resets all input fields to their default values and clears the BPF string in the application instance.
+    The window layout is managed using the `grid` method, and the input fields are organized in a `Frame`. Buttons are provided to save the filter settings or reset the fields.
+    """
     def generate_bpf():
         # 获取用户输入的所有过滤条件
         protocol = protocol_var.get()
